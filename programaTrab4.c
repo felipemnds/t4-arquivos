@@ -271,6 +271,8 @@ int main(int argc, char const *argv[]){
 	Pagina_Disco *paginas = malloc (sizeof(Pagina_Disco));
 	Reg_Cabecalho *rcabecalho = malloc (sizeof(Reg_Cabecalho)); 
 	Reg_Dados *rdados = malloc (sizeof(Reg_Dados));
+	iReg_Cabecalho *ircabecalho = malloc (sizeof(iReg_Cabecalho)); 
+	iReg_Dados *irdados = malloc (sizeof(iReg_Dados));
 	int contpagdisco = 0;
 	int pdisco_acessadas = 0;
 	int erro = 0;
@@ -300,7 +302,10 @@ int main(int argc, char const *argv[]){
 	char *campoAtualiza = malloc (40*sizeof(char));
 	char *valorAtualiza = malloc (150*sizeof(char));
 	/* func7
-		> vetorRegistros - vetor que armazena os registros durante a ordenacao
+		> vetReg - vetor que armazena os registros durante a ordenacao
+	*/
+	Reg_Dados **vetReg = malloc (10000 * sizeof(Reg_Dados*));
+	/* func10
 	*/
 	Reg_Dados **vetReg = malloc (10000 * sizeof(Reg_Dados*));
 	for (int i = 0; i < 10000; i++)
@@ -554,8 +559,7 @@ int main(int argc, char const *argv[]){
 		fclose(arquivoBIN2);
 		fclose(arquivoBINsaida);	
 	}else if(func == 10){
-		iReg_Cabecalho *ircabecalho = malloc (sizeof(Reg_Cabecalho)); 
-		iReg_Dados *irdados = malloc (sizeof(Reg_Dados));
+		
 	}else if (func == 99){
 		scanf("%s", filename1);
 		trim(filename1);

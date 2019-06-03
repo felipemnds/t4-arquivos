@@ -12,7 +12,7 @@ Campos e registros de tamanho fixo
   - byte offset da chave correspondente
 
 # Funções
-## 10
+## 10 - criaNovoIndice (leEntradaEscreveIndice, copiaIndiceRAM, MS_sort(comparaIndices), escreveRAMIndice)
 - criar um arquivo de indice secundário fortemente ligado
   - criar um registro de cabecalho aux
   - criar um registro de dados aux
@@ -33,7 +33,7 @@ Campos e registros de tamanho fixo
 
 ``` 10 arquivoEntrada.bin arquivoIndiceNomeServidor.bin ```
 
-## 11
+## 11 - copiaIndiceRAM, buscaRegistrosIndice (buscaBinariaIndice, <trecho que imprime buscas>, <trecho que calcula paginas de disco acessadas>), escreveRAMIndice
 - ler uma busca do usuário por nomeServidor
 - carregar o arquivo de índice para a RAM num vetor (pra fazer buscas binárias eficientes)
 - buscar no índice (busca binaria)
@@ -68,7 +68,7 @@ Número de páginas de disco para carregar o arquivo de índice: 5
 Número de páginas de disco para acessar o arquivo de dados: 1
 ```
 
-## 12
+## 12 - copiaIndiceRAM, removeRegistroIndice ({removeRegistro}, buscaRemocaoIndice (buscaBinariaIndice, <trecho que valida byte offset>, shiftIndice)), escreveRAMIndice
 - estender a func4 (remocao)
 - carregar o arquivo de índice para a RAM num vetor (pra fazer buscas binárias eficientes)
   - usar a copiaIndiceRAM criada na func10
@@ -81,7 +81,7 @@ Número de páginas de disco para acessar o arquivo de dados: 1
 - no fim, operação de reescrita do índice (wb pra escrever no arquivo)
 > saída: listar o arquivo de índice
 
-## 13
+## 13 - copiaIndiceRAM, insereRegistroRAM ({insereRegistro}, insereIndice, MS_sort(comparaIndices)), escreveRAMIndice
 - estender a func5 (insercao)
 - fazer as mesmas coisas que a func12
   - carregar o arquivo de índice para a RAM num vetor (pra fazer buscas binárias eficientes)
