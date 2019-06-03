@@ -71,6 +71,8 @@ typedef struct reg_dados{
 }Reg_Dados;
 /*
 Registro de cabecalho (indice)
+	> status - armazena 0 se for inconsistente e 1 se consistente
+	> nroRegistros - armazena a quantidae de registros presentes no indice
 */
 typedef struct reg_cabecalho_indice{
 	char status;
@@ -78,12 +80,13 @@ typedef struct reg_cabecalho_indice{
 }iReg_Cabecalho;
 /*
 Registro de dados (indice)
+	> chaveBusca - chave usada para as buscas no indice
+	> byteOffset - byte offset no arquivo de entrada do registro referente a chave de busca
 */
 typedef struct reg_dados_indice{
 	char chaveBusca[120];
 	long byteOffset;
-}iReg_Cabecalho;
-typedef
+}iReg_Dados;
 // DECLARACAO DE FUNCOES (T1)
 /* leCSVescreveBIN
 	Funcao que le varios registros presentes em um arquivo.csv (campos separado por virgulas) e armazena em um arquivo binario de saida. 
@@ -550,6 +553,9 @@ int main(int argc, char const *argv[]){
 		
 		fclose(arquivoBIN2);
 		fclose(arquivoBINsaida);	
+	}else if(func == 10){
+		iReg_Cabecalho *ircabecalho = malloc (sizeof(Reg_Cabecalho)); 
+		iReg_Dados *irdados = malloc (sizeof(Reg_Dados));
 	}else if (func == 99){
 		scanf("%s", filename1);
 		trim(filename1);
