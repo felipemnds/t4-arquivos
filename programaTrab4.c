@@ -1651,3 +1651,119 @@ void matching(FILE* entradaMaior, FILE* entradaMenor, FILE* saida, int* entrada1
 	fseek(saida, 0, SEEK_SET);		
 	fwrite("1", sizeof(char), 1, saida);
 }
+
+// FUNCIONALIDADE 10
+void copiaIndiceRAM(FILE *arquivoBIN, iReg_Dados *irdados, iVetReg *vetRegIndice, int *erro){
+	int flag_encontrou = 0;
+	int pos_bin;
+	int pos_buffer;
+	// antes de tudo, checamos se o arquivo binario pode ser lido (ou seja, esta consistente, status = 1)
+	if (!testeEhConsistente(arquivoBIN)){
+		printf("Falha no processamento do arquivo.\n");
+		*erro = 1;
+		return;
+	}
+	// ignoramos a primeira pagina de disco (que so possui o registro de cabecalho)
+	setStatus(arquivoBIN, '0');
+	fseek(arquivoBIN, 32000, SEEK_SET);
+	// lemos todo o arquivoBIN, registro por registro
+	// a cada leitura, o registro resgatado eh testado
+	// e seus campos sao combinados com as entradas do usuario
+	// caso nenhuma seja encontrada, o proximo registro eh resgatado
+	// caso algum valor encontrado seja identico a entrada do usuario, este registro eh removido 
+	while (lerProxRegIndice(arquivoBIN, irdados)){
+		// pula lixo
+		while(fgetc(arquivoBIN) == '@'){
+		}
+		if(!feof(arquivoBIN))
+			fseek(arquivoBIN, ftell(arquivoBIN)-1, SEEK_SET);
+		pos_bin = ftell(arquivoBIN) - 129;
+		
+		}
+		// os registros sao sempre limpados, a fim de que informacoes de registros antigos nao sejam reutiilizadas
+		limpaRegistro(rdados);
+	}
+	setStatus(arquivoBIN, '1');
+	return;
+}
+int lerProxRegIndice(FILE *arquivoBIN, iReg_Dados *irdados){
+	// le chaveBusca
+	fread(irdados->chaveBusca, sizeof(char), 121, arquivoBIN);
+	if (feof(arquivoBIN))
+		return 0;
+	// le byteOffset
+	fread(&(irdados->byteOffset), sizeof(long), 1, arquivoBIN);
+	if (feof(arquivoBIN))
+		return 0;	
+	return 1;
+}
+// FUNCIONALIDADE 12
+void removeRegistroIndice(FILE *arquivoBIN, FILE *arquivoBINsaida, Reg_Dados *rdados, char *nomeCampo, char *valorCampo, iVetReg *vetRegIndice, int *erro){
+	int flag_encontrou = 0;
+	int pos_bin;
+	int pos_buffer;
+	// antes de tudo, checamos se o arquivo binario pode ser lido (ou seja, esta consistente, status = 1)
+	if (!testeEhConsistente(arquivoBIN)){
+		printf("Falha no processamento do arquivo.\n");
+		*erro = 1;
+		return;
+	}
+	// ignoramos a primeira pagina de disco (que so possui o registro de cabecalho)
+	setStatus(arquivoBIN, '0');
+	fseek(arquivoBIN, 32000, SEEK_SET);
+	// lemos todo o arquivoBIN, registro por registro
+	// a cada leitura, o registro resgatado eh testado
+	// e seus campos sao combinados com as entradas do usuario
+	// caso nenhuma seja encontrada, o proximo registro eh resgatado
+	// caso algum valor encontrado seja identico a entrada do usuario, este registro eh removido 
+	while (lerRegistroPre(arquivoBIN, rdados)){
+		// pula lixo
+		while(fgetc(arquivoBIN) == '@'){
+		}
+		if(!feof(arquivoBIN))
+			fseek(arquivoBIN, ftell(arquivoBIN)-1, SEEK_SET);
+		pos_bin = ftell(arquivoBIN) - (rdados->tamanhoRegistro + 5);
+		if (rdados->removido == '*')
+			continue;
+		// compara o registro lido com a entrada do usuario
+		if (!strcmp(nomeCampo, "idServidor")){
+			if (atoi(valorCampo) == rdados->idServidor){
+				flag_encontrou = 1;
+			}
+		}else if (!strcmp(nomeCampo, "salarioServidor")){
+			if (strlen(valorCampo) == 0 && rdados->salarioServidor == -1){
+				flag_encontrou = 1;
+			}else if (atof(valorCampo) == rdados->salarioServidor){
+				flag_encontrou = 1;
+			}
+		}else if (!strcmp(nomeCampo, "telefoneServidor")){
+			if (strlen(valorCampo) == 0 && strnlen(rdados->telefoneServidor,14) == 0){
+				flag_encontrou = 1;
+			}else if (strlen(valorCampo) != 0 && !strncmp(valorCampo, rdados->telefoneServidor,14)){
+				flag_encontrou = 1;
+			}
+		}else if (!strcmp(nomeCampo, "nomeServidor")){
+			if (strlen(valorCampo) == 0 && strlen(rdados->nomeServidor) == 0){
+				flag_encontrou = 1;
+			}else if (!strcmp(valorCampo, rdados->nomeServidor)){
+				flag_encontrou = 1;
+			}
+		}else if (!strcmp(nomeCampo, "cargoServidor")){
+			if (strlen(valorCampo) == 0 && strlen(rdados->cargoServidor) == 0){
+				flag_encontrou = 1;
+			}else if (!strcmp(valorCampo, rdados->cargoServidor)){
+				flag_encontrou = 1;
+			}
+		} 
+		if (flag_encontrou){
+			pos_buffer = ftell(arquivoBIN);
+			insereListaRemovidos(pos_bin, arquivoBIN);
+			fseek(arquivoBIN, pos_buffer, SEEK_SET);
+			flag_encontrou = 0;
+		}
+		// os registros sao sempre limpados, a fim de que informacoes de registros antigos nao sejam reutiilizadas
+		limpaRegistro(rdados);
+	}
+	setStatus(arquivoBIN, '1');
+	return;
+}

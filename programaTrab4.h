@@ -81,7 +81,13 @@ typedef struct reg_dados_indice{
 	char chaveBusca[120];
 	long byteOffset;
 }iReg_Dados;
-
+/*
+Vetor de registros de dados do indice
+*/
+typedef struct vet_reg_dados_indice{
+	iReg_Dados **v = malloc (10000 * sizeof(Reg_Dados*));
+	int tam;
+}iVetReg;
 // DECLARACAO DE FUNCOES (T1)
 /* leCSVescreveBIN
 	Funcao que le varios registros presentes em um arquivo.csv (campos separado por virgulas) e armazena em um arquivo binario de saida. 
@@ -238,5 +244,11 @@ void merging(FILE* entradaMaior, FILE* entradaMenor, FILE* saida, int* entrada1)
 	arquivo repetido e inserido apenas uma vez no arquivo final de saida.
 */
 void matching(FILE* entradaMaior, FILE* entradaMenor, FILE* saida, int* entrada1);
+
+/* removeRegistroIndice
+	Funcao que busca pelos registros que satisfazem a busca do usuario e insere tais registros na lista de removidos 
+	Alem disso, atualiza o arquivo de indice enviado como um dos parametros da funcao
+*/
+void removeRegistroIndice(FILE *arquivoBIN, FILE *arquivoBINsaida, Reg_Dados *rdados, char *nomeCampo, char *valorCampo, iVetReg *vetRegIndice, int *erro);
 
 #endif

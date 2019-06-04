@@ -12,12 +12,12 @@ Campos e registros de tamanho fixo
   - byte offset da chave correspondente
 
 # Funções
-## 10 - criaNovoIndice (leEntradaEscreveIndice, copiaIndiceRAM, MS_sort(comparaIndices), escreveRAMIndice)
+## 10 <BRUNO> - criaNovoIndice (leEntradaEscreveIndice, copiaIndiceRAM, MS_sort(comparaIndices), escreveRAMIndice)
 - criar um arquivo de indice secundário fortemente ligado
   - criar um registro de cabecalho aux
   - criar um registro de dados aux
   - criar um vetor de iReg_Dados
-  - entrar na funcao 10 (copiaIndiceRAM)
+  - entrar na funcao 10 (criaNovoIndice)
     - levar junto a estrutura de pagina de discos e um outro vetor (de iReg_Dados)
     - preencher o registro de cabecalho
       - status = 0
@@ -33,7 +33,7 @@ Campos e registros de tamanho fixo
 
 ``` 10 arquivoEntrada.bin arquivoIndiceNomeServidor.bin ```
 
-## 11 - copiaIndiceRAM, buscaRegistrosIndice (buscaBinariaIndice, <trecho que imprime buscas>, <trecho que calcula paginas de disco acessadas>), escreveRAMIndice
+## 11 <BRUNO> - copiaIndiceRAM, buscaRegistrosIndice (buscaBinariaIndice, <trecho que imprime buscas>, <trecho que calcula paginas de disco acessadas>), escreveRAMIndice
 - ler uma busca do usuário por nomeServidor
 - carregar o arquivo de índice para a RAM num vetor (pra fazer buscas binárias eficientes)
 - buscar no índice (busca binaria)
@@ -68,20 +68,20 @@ Número de páginas de disco para carregar o arquivo de índice: 5
 Número de páginas de disco para acessar o arquivo de dados: 1
 ```
 
-## 12 - copiaIndiceRAM, removeRegistroIndice ({removeRegistro}, buscaRemocaoIndice (buscaBinariaIndice, <trecho que valida byte offset>, shiftIndice)), escreveRAMIndice
+## 12 <FELIPE> - copiaIndiceRAM, removeRegistroIndice ({removeRegistro}, buscaRemocaoIndice (buscaBinariaIndice, <trecho que valida byte offset>, shiftIndice)), escreveRAMIndice
 - estender a func4 (remocao)
 - carregar o arquivo de índice para a RAM num vetor (pra fazer buscas binárias eficientes)
   - usar a copiaIndiceRAM criada na func10
 - enquanto as n remoções acontecerem, atualizar o índice só na RAM
-  - criar outra funcao pra buscar 
-    - internamente, busca pela chave
-    - se busca tiver o mesmo byte offset
-      - shifta os proximos para pos-1
-      - diminui o tamVetor em 1 (ou seja, talvez eh uma boa criar uma struct com vet e int tamVetor)
+  - criar outra funcao pra buscar internamente, busca pela chave
+  - se busca tiver o mesmo byte offset
+    - shifta os proximos para pos-1
+    - diminui o tamVetor em 1 (ou seja, talvez eh uma boa criar uma struct com vet e int tamVetor)
+  - ordena o vetor
 - no fim, operação de reescrita do índice (wb pra escrever no arquivo)
 > saída: listar o arquivo de índice
 
-## 13 - copiaIndiceRAM, insereRegistroRAM ({insereRegistro}, insereIndice, MS_sort(comparaIndices)), escreveRAMIndice
+## 13 <FELIPE> - copiaIndiceRAM, insereRegistroRAM ({insereRegistro}, insereIndice, MS_sort(comparaIndices)), escreveRAMIndice
 - estender a func5 (insercao)
 - fazer as mesmas coisas que a func12
   - carregar o arquivo de índice para a RAM num vetor (pra fazer buscas binárias eficientes)
@@ -91,7 +91,7 @@ Número de páginas de disco para acessar o arquivo de dados: 1
   - no fim, operação de reescrita do índice (wb pra escrever no arquivo)
 > saída: listar o arquivo de índice
 
-## 14
+## 14 <FELIPE> 
 - executar uma busca com a func 3 e armazenar as paginas de disco
 - executar uma busca com a func 11 e armazenar as paginas de disco (ignorando as usadas no carregamento)
 ```

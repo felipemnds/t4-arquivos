@@ -1,3 +1,8 @@
+/* Trabalho 4 - Organização de Arquivos
+	Nomes da dupla:
+	- FELIPE MOREIRA NEVES DE SOUZA - 10734651
+	- BRUNO BALDISSERA CARLOTTO - 10724351
+*/
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -61,9 +66,13 @@ int main(int argc, char const *argv[]){
 	char *campoAtualiza = malloc (40*sizeof(char));
 	char *valorAtualiza = malloc (150*sizeof(char));
 	/* func7
-		> vetorRegistros - vetor que armazena os registros durante a ordenacao
+		> vetReg - vetor que armazena os registros durante a ordenacao
 	*/
 	Reg_Dados **vetReg = malloc (10000 * sizeof(Reg_Dados*));
+	/* func 12
+		> vetRegIndice - estrutura que armazena registros de um arquivo de indice e auxilia operacoes
+	*/
+	iVetReg *vetRegIndice = malloc (sizeof(iVetReg)); 
 	for (int i = 0; i < 10000; i++)
 		vetReg[i] = malloc (sizeof(Reg_Dados));
 	// bloco que encaminha o programa para a funcionalidade escolhida e abre os arquivos da maneira necessaria
@@ -302,6 +311,20 @@ int main(int argc, char const *argv[]){
 		
 		fclose(arquivoBIN2);
 		fclose(arquivoBINsaida);	
+	}else if (func == 12){
+		scanf("%s %s %d", filename1, filename2, &n);
+		arquivoBIN = fopen(filename1, "rb+");
+		arquivoBINsaida = fopen(filename2, "rb+");
+		if (arquivoBINsaida == NULL || arquivoBIN == NULL){
+			printf("Falha no processamento do arquivo.\n");
+			return 0;
+		}
+		for (int i = 0; (i < n && !erro); i++){
+			scanf("%s", nomeCampo);
+			scan_quote_string(valorCampo);
+			removeRegistroIndice(arquivoBIN, arquivoBINsaida, rdados, nomeCampo, valorCampo, vetRegIndice, &erro);
+		}
+		if (!erro) binarioNaTela1(arquivoBIN);
 	}else if (func == 99){
 		scanf("%s", filename1);
 		trim(filename1);
