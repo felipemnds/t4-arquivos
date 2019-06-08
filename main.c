@@ -73,6 +73,8 @@ int main(int argc, char const *argv[]){
 		> vetRegIndice - estrutura que armazena registros de um arquivo de indice e auxilia operacoes
 	*/
 	iVetReg *vetRegIndice = malloc (sizeof(iVetReg)); 
+	vetRegIndice->v = malloc (10000 * sizeof(Reg_Dados*));
+	vetRegIndice->tam = 0;
 	for (int i = 0; i < 10000; i++)
 		vetReg[i] = malloc (sizeof(Reg_Dados));
 	// bloco que encaminha o programa para a funcionalidade escolhida e abre os arquivos da maneira necessaria
@@ -319,11 +321,17 @@ int main(int argc, char const *argv[]){
 			printf("Falha no processamento do arquivo.\n");
 			return 0;
 		}
+		// carregar o arq de indice para um vetor na RAM
+		copiaIndiceRAM(arquivoBINsaida, irdados, vetRegIndice, &erro);
 		for (int i = 0; (i < n && !erro); i++){
 			scanf("%s", nomeCampo);
 			scan_quote_string(valorCampo);
-			removeRegistroIndice(arquivoBIN, arquivoBINsaida, rdados, nomeCampo, valorCampo, vetRegIndice, &erro);
+
+			removeRegistroIndice(arquivoBIN, rdados, nomeCampo, valorCampo, vetRegIndice, &erro);
 		}
+		fclose(arquivoBINsaida);
+		arquivoBINsaida = fopen(filename2, "wb+");
+		escreveRAMIndice(arquivoBINsaida, vetRegIndice);
 		if (!erro) binarioNaTela1(arquivoBIN);
 	}else if (func == 99){
 		scanf("%s", filename1);

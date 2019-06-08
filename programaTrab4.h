@@ -85,7 +85,7 @@ typedef struct reg_dados_indice{
 Vetor de registros de dados do indice
 */
 typedef struct vet_reg_dados_indice{
-	iReg_Dados **v = malloc (10000 * sizeof(Reg_Dados*));
+	iReg_Dados **v;
 	int tam;
 }iVetReg;
 // DECLARACAO DE FUNCOES (T1)

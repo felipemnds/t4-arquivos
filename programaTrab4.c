@@ -36,6 +36,35 @@ void limpaRegistro(Reg_Dados *rdados){
 	rdados->cargoServidor[0] = '\0';
 	return;
 }
+void limpaRegistroIndice(iReg_Dados *irdados){
+	irdados->chaveBusca[0] = '\0';
+	irdados->byteOffset = -1;
+	return;
+}
+int buscaBinariaIndice(iVetReg *vet, char *chave, int ini, int fim) {
+	// 0 - caso base (busca sem sucesso)
+	if (ini > fim) return -1;
+
+	// 1 - calcula ponto central e verifica se chave foi encontrada
+	int centro = (int)((ini+fim)/2.0);
+	if (!strcmp(vet->v[centro]->chaveBusca, chave)){
+		// retornar o primeiro (mais a esquerda) que da match com nomeServidor
+		while(centro != 0 && !strcmp(vet->v[centro]->chaveBusca, chave))
+			centro--;
+		return centro;
+	}
+
+	// 2 - chamada recursiva para metade do espaco de busca
+	if (strcmp(chave, vet->v[centro]->chaveBusca) < 0)
+		// se chave eh menor, fim passa ser o centro-1
+		return busca_binaria(vet, chave, ini, centro-1);
+
+	if (strcmp(chave, vet->v[centro]->chaveBusca) > 0)
+		// se a chave eh maior, inicio passa ser centro+1
+		return busca_binaria(vet, chave, centro+1, fim);
+	return -1;
+}
+
 // FUNCIONALIDADE 1
 void leCSVescreveBIN (FILE *arquivoCSV, FILE *arquivoBIN, Reg_Dados *rdados, Reg_Cabecalho *rcabecalho, Pagina_Disco *paginas){
 	// primeiro, lemos o registro de cabecalho
@@ -1316,6 +1345,15 @@ int comparaRegistros(const void *A, const void *B) {
     rB = (Reg_Dados**) B;
     return ((*rB)->idServidor) - ((*rA)->idServidor);
 }
+int comparaRegistrosIndice(const void *A, const void *B) {
+    iReg_Dados **rA, **rB;
+    rA = (iReg_Dados**) A;
+    rB = (iReg_Dados**) B;
+	if (!strcmp((*rA)->chaveBusca, (*rB)->chaveBusca)){
+		return ((*rB)->byteOffset - (*rA)->byteOffset);
+	}
+    return (strcmp((*rB)->chaveBusca, (*rA)->chaveBusca));
+}
 // FUNCIONALIDADE 8
 //funcao muito similar a "lerRegistroPre", porem com algumas modificacoes para atender melhor as funcionalidades 8 e 9
 int lerProxRegistro(FILE *arquivoBIN, Reg_Dados *rdados, int* ultimoReg, int* pulaReg){
@@ -1654,7 +1692,6 @@ void matching(FILE* entradaMaior, FILE* entradaMenor, FILE* saida, int* entrada1
 
 // FUNCIONALIDADE 10
 void copiaIndiceRAM(FILE *arquivoBIN, iReg_Dados *irdados, iVetReg *vetRegIndice, int *erro){
-	int flag_encontrou = 0;
 	int pos_bin;
 	int pos_buffer;
 	// antes de tudo, checamos se o arquivo binario pode ser lido (ou seja, esta consistente, status = 1)
@@ -1666,36 +1703,67 @@ void copiaIndiceRAM(FILE *arquivoBIN, iReg_Dados *irdados, iVetReg *vetRegIndice
 	// ignoramos a primeira pagina de disco (que so possui o registro de cabecalho)
 	setStatus(arquivoBIN, '0');
 	fseek(arquivoBIN, 32000, SEEK_SET);
+	int i = 0;
 	// lemos todo o arquivoBIN, registro por registro
-	// a cada leitura, o registro resgatado eh testado
-	// e seus campos sao combinados com as entradas do usuario
-	// caso nenhuma seja encontrada, o proximo registro eh resgatado
-	// caso algum valor encontrado seja identico a entrada do usuario, este registro eh removido 
 	while (lerProxRegIndice(arquivoBIN, irdados)){
 		// pula lixo
 		while(fgetc(arquivoBIN) == '@'){
 		}
 		if(!feof(arquivoBIN))
 			fseek(arquivoBIN, ftell(arquivoBIN)-1, SEEK_SET);
-		pos_bin = ftell(arquivoBIN) - 129;
-		
-		}
+		pos_bin = ftell(arquivoBIN) - 128;
+		// inserindo o registro atual no vetor
+		strcpy(vetRegIndice->v[i]->chaveBusca, irdados->chaveBusca);
+		vetRegIndice->v[i]->byteOffset = irdados->byteOffset;
 		// os registros sao sempre limpados, a fim de que informacoes de registros antigos nao sejam reutiilizadas
-		limpaRegistro(rdados);
+		limpaRegistroIndice(irdados);
+		i++;
 	}
+	// por fim, copiamos o ultimo registro presente no arquivo de indice
+	strcpy(vetRegIndice->v[i]->chaveBusca, irdados->chaveBusca);
+	vetRegIndice->v[i]->byteOffset = irdados->byteOffset;
+	i++;
+	vetRegIndice->tam = i;
 	setStatus(arquivoBIN, '1');
 	return;
 }
 int lerProxRegIndice(FILE *arquivoBIN, iReg_Dados *irdados){
 	// le chaveBusca
-	fread(irdados->chaveBusca, sizeof(char), 121, arquivoBIN);
+	fread(irdados->chaveBusca, sizeof(char), 120, arquivoBIN);
 	if (feof(arquivoBIN))
-		return 0;
+		return 0;	
+	/* se a chaveBusca nao tem '\0', habilita essa parte
+	char c = 'a';
+	int i = 0;
+	while (c != '@' && i < 120)
+		c = irdados->chaveBusca[i++];
+	if (i < 120)
+		irdados->chaveBusca[i] = '\0';
+	*/
 	// le byteOffset
 	fread(&(irdados->byteOffset), sizeof(long), 1, arquivoBIN);
 	if (feof(arquivoBIN))
 		return 0;	
 	return 1;
+}
+void escreveRAMIndice(FILE *arquivoBIN, iVetReg *vetRegIndice){
+	// pulamos o cabecalho e escrevemos os registros de dados
+	fseek(arquivoBIN, 0, SEEK_SET);
+	char c = '1';
+	fwrite(&c, sizeof(char), 1, arquivoBIN);
+	int tam = vetRegIndice->tam;
+	fwrite(&tam, sizeof(int), 1, arquivoBIN);
+	char arroba[tam];
+	for(int j = 0; j < tam; j++){
+		arroba[j] = '@';
+	}
+	fseek(arquivoBIN, (pos+13), SEEK_SET);
+	fwrite(arroba, sizeof(char), tam, arquivoBIN);
+	for (int i = 0; i < vetRegIndice->tam; i++){
+		fwrite(vetRegIndice->v[i]->chaveBusca, sizeof(char), 120, arquivoBIN);
+		fwrite(&(vetRegIndice->v[i]->byteOffset), sizeof(long), 1, arquivoBIN);
+	}
+	return;
 }
 // FUNCIONALIDADE 12
 void removeRegistroIndice(FILE *arquivoBIN, FILE *arquivoBINsaida, Reg_Dados *rdados, char *nomeCampo, char *valorCampo, iVetReg *vetRegIndice, int *erro){
@@ -1713,9 +1781,6 @@ void removeRegistroIndice(FILE *arquivoBIN, FILE *arquivoBINsaida, Reg_Dados *rd
 	fseek(arquivoBIN, 32000, SEEK_SET);
 	// lemos todo o arquivoBIN, registro por registro
 	// a cada leitura, o registro resgatado eh testado
-	// e seus campos sao combinados com as entradas do usuario
-	// caso nenhuma seja encontrada, o proximo registro eh resgatado
-	// caso algum valor encontrado seja identico a entrada do usuario, este registro eh removido 
 	while (lerRegistroPre(arquivoBIN, rdados)){
 		// pula lixo
 		while(fgetc(arquivoBIN) == '@'){
@@ -1758,6 +1823,33 @@ void removeRegistroIndice(FILE *arquivoBIN, FILE *arquivoBINsaida, Reg_Dados *rd
 		if (flag_encontrou){
 			pos_buffer = ftell(arquivoBIN);
 			insereListaRemovidos(pos_bin, arquivoBIN);
+			// remover do vetor de indice junto do arquivoBIN
+			if (strlen(rdados->nomeServidor) > 0){
+				// remove fazendo busca binaria no vetor indice
+				int testeResBB = buscaBinariaIndice(vetRegIndice, rdados->nomeServidor, 0, vetRegIndice->tam);
+				int resBB = -1;
+				if (testeResBB != -1){
+					// ir para frente ate dar match com o byte offset
+					while(resBB == -1 && testeResBB < vetRegIndice->tam && !strcmp(vetRegIndice->v[testeResBB]->chaveBusca, rdados->nomeServidor){
+						if (vetRegIndice->v[testeResBB]->byteOffset == (long) pos_bin)
+							resBB = testeResBB;
+						testeResBB++;
+					}
+				}
+				if (resBB == -1)
+					printf("Deu ruim");
+				else{
+					// ao encontrar, shiftar todos os proximos para pos-1
+					for (int i = resBB; i < vetRegIndice->tam - 1; i++){
+						vetRegIndice->v[i]->byteOffset = vetRegIndice->v[i+1]->byteOffset;
+						strcpy(vetRegIndice->v[i]->chaveBusca, vetRegIndice->v[i+1]->chaveBusca);
+					}
+					// diminuir tam do vetor -1
+					vetRegIndice->tam = vetRegIndice->tam - 1;
+				}
+			}
+			// apos remover, ordenar novamente o vetor de indice
+			MS_sort(vetRegIndice->v, vetRegIndice->tam, sizeof(iReg_Dados), comparaRegistrosIndice);
 			fseek(arquivoBIN, pos_buffer, SEEK_SET);
 			flag_encontrou = 0;
 		}
