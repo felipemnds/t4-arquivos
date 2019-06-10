@@ -8,7 +8,7 @@ valgrind:
 	valgrind --leak-check=full --track-origins=yes ./programaTrab4
 test:
 	gcc -g programaTrab4.c programaTrab4.h main.c funcoesMonitor.c funcoesMonitor.h -o programaTrab4
-	./programaTrab4 < 14.in > saida.out
+	./programaTrab4 < 15.in
 unzip: 
 	unzip -j 2-casos-teste.zip < unzip.in
 	unzip -j 1-arquivos-binarios.zip < unzip.in

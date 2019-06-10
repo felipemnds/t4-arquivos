@@ -276,7 +276,7 @@ void guardaDescricoesCabecalho(FILE* entrada, Reg_Cabecalho* cab);
 
 void imprime_registro_encontrado(FILE* bin, iReg_Dados* indiceAux, Reg_Cabecalho* cab);
 
-void verificaRecuperacao(FILE* entradaIndices, FILE* entradaBin, iReg_Dados* indiceAux, char campo[], char valor[], Reg_Cabecalho* cab, int* encontrado, int* acessosDados);
+void verificaRecuperacao(FILE* entradaIndices, FILE* entradaBin, iReg_Dados* indiceAux, char campo[], char valor[], Reg_Cabecalho* cab, int* encontrado, int* acessosDados, int* pagAnterior);
 
 int lerProxIndice(FILE* entrada, iReg_Dados* indice);
 

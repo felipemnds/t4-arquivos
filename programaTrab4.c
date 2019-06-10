@@ -2045,12 +2045,18 @@ void imprime_registro_encontrado(FILE* bin, iReg_Dados* indiceAux, Reg_Cabecalho
 /*	Esta funcao verifica se um determinado registro lido precisa ser recuperado, comparando uma chave de busca com o valor
 	inserido na entrada padrao, e se for o caso, chama a funcao que imprime seus dados
 */
-void verificaRecuperacao(FILE* entradaIndices, FILE* entradaBin, iReg_Dados* indiceAux, char campo[], char valor[], Reg_Cabecalho* cab, int* encontrado, int* acessosDados){
+void verificaRecuperacao(FILE* entradaIndices, FILE* entradaBin, iReg_Dados* indiceAux, char campo[], char valor[], Reg_Cabecalho* cab, int* encontrado, int* acessosDados, int* pagAnterior){
 	if (strcmp(campo, "nomeServidor") == 0){
 		if (strcmp(valor, indiceAux->chaveBusca) == 0) {
 			imprime_registro_encontrado(entradaBin, indiceAux, cab);
 			*encontrado = 1;
-			*acessosDados = (*acessosDados) + 1;
+			
+			//cincrementamos a variavel de acessos a paginas no arquivo de dados caso esse seja em uma nova pagina
+			int novaPag = ftell(entradaBin) / 32000;
+			if (novaPag != *pagAnterior) (*acessosDados)++;
+			
+			//atualizamos o valor da pagina anterior, ja que o acesso foi feito
+			*pagAnterior = novaPag;
 		}
 	}	
 }
@@ -2098,32 +2104,27 @@ int recuperaDados(FILE* entradaBin, FILE* entradaIndices, char campo[], char val
 	int encontrado = 0;
 
 	//variaveis que guardam a quantidade de acessos a disco em ambos os arquivos lidos	
-	int acessosDados = 0; //comeca com 1 por que sempre ha o registro de cabecalho a ser lido
+	int acessosDados = 1; //comeca com 1 por que sempre ha o registro de cabecalho a ser lido
 	int acessosIndices = 1;	//comeca com 1 por que sempre ha o registro de cabecalho a ser lido
 	
 	//variavel que guarda a posicao do ponteiro no arquivo de indices sendo lido
 	int offset_atual = 0;
+	
 	//guarda em que pagina de disco esta o ponteiro do arquivo de indices
-	int pagAtual = 0;
+	int pagAtual = -1;
+	//guarda a pagina de disco em que ocorreu o ultimo acesso ao arquivo de dados
+	int pagAnterior = -1;
 	
 	//este loop le todos os registros de indice e verifica, um a um, a partir da chave de busca, se o registro atual deve ser impresso
 	while (lerProxIndice(entradaIndices, indiceAux)){
-		verificaRecuperacao(entradaIndices, entradaBin, indiceAux, campo, valor, cab, &encontrado, &acessosDados);
+		verificaRecuperacao(entradaIndices, entradaBin, indiceAux, campo, valor, cab, &encontrado, &acessosDados, &pagAnterior);
 		
-		if (pagAtual == -1){
-			pagAtual = (ftell(entradaIndices)) / 32000;
-		}
-		else if (((ftell(entradaIndices)) / 32000) != pagAtual) {			
+		if (((ftell(entradaIndices)) / 32000) != pagAtual) {			
 			pagAtual = ((ftell(entradaIndices)) / 32000);
 			acessosIndices++;
 		}
-		/*
-		//atualizamos o offset atual e a pagina de disco
-		offset_atual = ftell(entradaIndices);
-		pagAtual = (offset_atual) / 32000;		
-		*/
 	}
-	verificaRecuperacao(entradaIndices, entradaBin, indiceAux, campo, valor, cab, &encontrado, &acessosDados);
+	verificaRecuperacao(entradaIndices, entradaBin, indiceAux, campo, valor, cab, &encontrado, &acessosDados, &pagAnterior);
 	//caso nenhum registro de indice seja encontrado, imprimimos esta mensagem
 	if (origemChamada == 1){
 		if(!encontrado) printf("Registro inexistente.\n");
@@ -2142,6 +2143,7 @@ int recuperaDados(FILE* entradaBin, FILE* entradaIndices, char campo[], char val
 
 	free(indiceAux);
 	free(cab);
+	
 	return acessosDados;
 }
 // FUNCIONALIDADE 12
