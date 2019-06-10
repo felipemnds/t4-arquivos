@@ -85,6 +85,7 @@ void binarioNaTela1(FILE *ponteiroArquivoBinario) {
 }
 
 void MS_sort(void *vector, unsigned long n, size_t memsize, int (*fcmp)(const void *, const void *)) {
+	if (DEBUG) printf("MS: entrou no MS\n");
 	unsigned long middle, rN, j, k;
 	void *aux, *r;
 

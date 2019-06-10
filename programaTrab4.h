@@ -88,6 +88,18 @@ typedef struct vet_reg_dados_indice{
 	iReg_Dados **v;
 	int tam;
 }iVetReg;
+
+typedef struct no_lista_indice{
+	struct no_lista_indice* prox;
+	iReg_Dados* dados;
+}No;
+
+typedef struct lista_{
+	No* inicio;
+	No* fim;
+	int tam;
+}Lista;
+
 // DECLARACAO DE FUNCOES (T1)
 /* leCSVescreveBIN
 	Funcao que le varios registros presentes em um arquivo.csv (campos separado por virgulas) e armazena em um arquivo binario de saida. 
@@ -103,7 +115,7 @@ void imprimirRegistrosBIN(int*, FILE*, Reg_Dados*, int*);
 /* buscaRegistrosBIN
 	Funcao que le um arquivo binario e busca por campos com valores especificos, definidos pela entrada do usuario.
 */ 
-void buscaRegistrosBIN(int*, FILE*, Reg_Dados*, char*, char*, Reg_Cabecalho*, int*);
+int buscaRegistrosBIN(int*, FILE*, Reg_Dados*, char*, char*, Reg_Cabecalho*, int*);
 /* lerCabecalhoCSV
 	Funcao que le o registro de cabecalho de um arquivo do tipo .csv e armazena-o na primeira pagina de disco do programa.
 	Alem disso, produz as primeiras impressoes dentro do arquivo binario que sera resultado da leCSVescreveBIN.
@@ -251,4 +263,33 @@ void matching(FILE* entradaMaior, FILE* entradaMenor, FILE* saida, int* entrada1
 */
 void removeRegistroIndice(FILE *arquivoBIN, FILE *arquivoBINsaida, Reg_Dados *rdados, char *nomeCampo, char *valorCampo, iVetReg *vetRegIndice, int *erro);
 
+//FUNCIONALIDADE 10
+
+void escreveIndice(No* indice, FILE* saida);
+
+void transfereLista(Lista* indices, FILE* saida);
+
+void criaArquivoIndice(FILE* entrada, FILE* saida, int* erro);
+
+//FUNCIONALIDADE 11
+void guardaDescricoesCabecalho(FILE* entrada, Reg_Cabecalho* cab);
+
+void imprime_registro_encontrado(FILE* bin, iReg_Dados* indiceAux, Reg_Cabecalho* cab);
+
+void verificaRecuperacao(FILE* entradaIndices, FILE* entradaBin, iReg_Dados* indiceAux, char campo[], char valor[], Reg_Cabecalho* cab, int* encontrado, int* acessosDados);
+
+int lerProxIndice(FILE* entrada, iReg_Dados* indice);
+
+int recuperaDados(FILE* entradaIndices, FILE* entradaBin, char campo[], char valor[], int origemChamada);/*
+*/
+int lerProxRegIndice(FILE *arquivoBIN, iReg_Dados *irdados);
+/*
+*/
+void copiaIndiceRAM(FILE *arquivoBIN, iReg_Dados *irdados, iVetReg *vetRegIndice, int *erro);
+/*
+*/
+void escreveRAMIndice(FILE *arquivoBIN, iVetReg *vetRegIndice);
+/*
+*/
+void insereRegistroIndice(FILE *arquivoBIN, FILE *arquivoBINsaida, Reg_Dados *rdados, iVetReg *vetRegIndice, int *erro);
 #endif

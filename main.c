@@ -10,7 +10,7 @@
 #include "programaTrab4.h"
 #include "funcoesMonitor.h"
 
-int main(int argc, char const *argv[]){
+int main(int argc, char const *argv[]){	
 	/* variaveis que serao definidas pelo usuario
 		> func - numero da funcionalidade escolhida
 		> filename1 - string que armazena nome do arquivo a ser aberto
@@ -37,6 +37,7 @@ int main(int argc, char const *argv[]){
 	Pagina_Disco *paginas = malloc (sizeof(Pagina_Disco));
 	Reg_Cabecalho *rcabecalho = malloc (sizeof(Reg_Cabecalho)); 
 	Reg_Dados *rdados = malloc (sizeof(Reg_Dados));
+	iReg_Dados *irdados = malloc (sizeof(iReg_Dados));
 	int contpagdisco = 0;
 	int pdisco_acessadas = 0;
 	int erro = 0;
@@ -74,6 +75,8 @@ int main(int argc, char const *argv[]){
 	*/
 	iVetReg *vetRegIndice = malloc (sizeof(iVetReg)); 
 	vetRegIndice->v = malloc (10000 * sizeof(Reg_Dados*));
+	for (int i = 0; i < 10000; i++)
+		vetRegIndice->v[i] = malloc (sizeof(iReg_Dados));
 	vetRegIndice->tam = 0;
 	for (int i = 0; i < 10000; i++)
 		vetReg[i] = malloc (sizeof(Reg_Dados));
@@ -312,7 +315,35 @@ int main(int argc, char const *argv[]){
 		binarioNaTela1(arquivoBINsaida);
 		
 		fclose(arquivoBIN2);
-		fclose(arquivoBINsaida);	
+		fclose(arquivoBINsaida);
+	}else if (func == 10){
+		scanf("%s %s", filename1, filename2);
+		arquivoBIN = fopen(filename1, "rb+");
+		arquivoBINsaida = fopen(filename2, "wb+");
+		if (arquivoBINsaida == NULL || arquivoBIN == NULL){
+			printf("Falha no processamento do arquivo.\n");
+			return 0;
+		}
+		criaArquivoIndice(arquivoBIN, arquivoBINsaida, &erro);
+		if (!erro) binarioNaTela1(arquivoBINsaida);
+	}else if (func == 11){
+		char campo[100];
+		char valor[100];
+		
+		scanf("%s %s %s %[^\r\n]%*c", filename1, filename2, campo, valor);
+		if (DEBUG) printf("bin: %s, indices: %s, campo: %s, valor: %s\n", filename1, filename2, campo, valor);		
+	
+		arquivoBIN = fopen(filename1, "rb");
+		FILE* arquivoBIN2 = fopen(filename2, "rb");
+
+		if (arquivoBIN == NULL || arquivoBIN2 == NULL){
+			printf("Falha no processamento do arquivo.\n");
+			if (DEBUG) printf("nao abriu\n");
+			return 0;
+		}
+
+		recuperaDados(arquivoBIN, arquivoBIN2, campo, valor, 1);
+		fclose(arquivoBIN2);
 	}else if (func == 12){
 		scanf("%s %s %d", filename1, filename2, &n);
 		arquivoBIN = fopen(filename1, "rb+");
@@ -325,14 +356,89 @@ int main(int argc, char const *argv[]){
 		copiaIndiceRAM(arquivoBINsaida, irdados, vetRegIndice, &erro);
 		for (int i = 0; (i < n && !erro); i++){
 			scanf("%s", nomeCampo);
+			if (DEBUG) printf("TESTE: leu nome campo\n");
 			scan_quote_string(valorCampo);
-
-			removeRegistroIndice(arquivoBIN, rdados, nomeCampo, valorCampo, vetRegIndice, &erro);
+			if (DEBUG) printf("TESTE: leu valor campo\n");
+			removeRegistroIndice(arquivoBIN, arquivoBINsaida, rdados, nomeCampo, valorCampo, vetRegIndice, &erro);
 		}
 		fclose(arquivoBINsaida);
 		arquivoBINsaida = fopen(filename2, "wb+");
 		escreveRAMIndice(arquivoBINsaida, vetRegIndice);
-		if (!erro) binarioNaTela1(arquivoBIN);
+		if (!erro) binarioNaTela1(arquivoBINsaida);
+	}else if (func == 13){
+		scanf("%s %s %d", filename1, filename2, &n);
+		arquivoBIN = fopen(filename1, "rb+");
+		arquivoBINsaida = fopen(filename2, "rb+");
+		if (arquivoBINsaida == NULL || arquivoBIN == NULL){
+			printf("Falha no processamento do arquivo.\n");
+			return 0;
+		}
+		// carregar o arq de indice para um vetor na RAM
+		copiaIndiceRAM(arquivoBINsaida, irdados, vetRegIndice, &erro);
+		for (int i = 0; (i < n && !erro); i++){
+			limpaRegistro(rdados);
+			// le removido
+			rdados->removido = '-';
+			// le encadeamento
+			rdados->encadeamentoLista = -1;
+			rdados->tamanhoRegistro += 8;
+			// le idservidor
+			scan_quote_string(campo_id);
+			rdados->idServidor = atoi(campo_id);
+			rdados->tamanhoRegistro += 4;
+			// le salario
+			scan_quote_string(campo_salario);
+			if (strlen(campo_salario) == 0)
+				rdados->salarioServidor = -1;
+			else
+				rdados->salarioServidor = atof(campo_salario);
+			rdados->tamanhoRegistro += 8;
+			// le telefone
+			scan_quote_string(campo_telefone);
+			if (strlen(campo_telefone) == 0){
+				rdados->telefoneServidor[0] = '\0';
+				for (int i = 1; i < 14; i++)
+					rdados->telefoneServidor[i] = '@';
+			}
+			else
+				strcpy(rdados->telefoneServidor, campo_telefone);
+			rdados->tamanhoRegistro += 14;
+			// le nome
+			scan_quote_string(campo_nome);
+			strcpy(rdados->nomeServidor, campo_nome);
+			rdados->tamNomeServidor = strlen(rdados->nomeServidor) + 2;
+			if (rdados->tamNomeServidor == 2)
+				rdados->tamNomeServidor = 0;
+			else
+				rdados->tamanhoRegistro += 4 + rdados->tamNomeServidor;
+			// le cargo
+			scan_quote_string(campo_cargo);
+			strcpy(rdados->cargoServidor, campo_cargo);
+			rdados->tamCargoServidor = strlen(rdados->cargoServidor) + 2;
+			if (rdados->tamCargoServidor == 2)
+				rdados->tamCargoServidor = 0;
+			else
+				rdados->tamanhoRegistro += 4 + rdados->tamCargoServidor;
+			insereRegistroIndice(arquivoBIN, arquivoBINsaida, rdados, vetRegIndice, &erro);
+		}
+		fclose(arquivoBINsaida);
+		arquivoBINsaida = fopen(filename2, "wb+");
+		escreveRAMIndice(arquivoBINsaida, vetRegIndice);
+		if (!erro) binarioNaTela1(arquivoBINsaida);
+	}else if (func == 14){
+		scanf("%s %s %s %[^\r\n]%*c", filename1, filename2, nomeCampo, valorCampo);
+		arquivoBIN = fopen(filename1, "rb+");
+		arquivoBINsaida = fopen(filename2, "rb+");
+		if (arquivoBINsaida == NULL || arquivoBIN == NULL){
+			printf("Falha no processamento do arquivo.\n");
+			return 0;
+		}
+		printf("*** Realizando a busca sem o auxílio de índice\n");
+		int acessosFunc3 = buscaRegistrosBIN(&contpagdisco, arquivoBIN, rdados, nomeCampo, valorCampo, rcabecalho, &pdisco_acessadas);
+		printf("*** Realizando a busca com o auxílio de um índice secundário fortemente ligado\n");
+		int acessosFunc11 = recuperaDados(arquivoBIN, arquivoBINsaida, nomeCampo, valorCampo, 2);
+		int diferencaAcessos = acessosFunc3 - acessosFunc11;
+		printf("\nA diferença no número de páginas de disco acessadas: %d\n", diferencaAcessos);
 	}else if (func == 99){
 		scanf("%s", filename1);
 		trim(filename1);

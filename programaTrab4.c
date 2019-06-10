@@ -11,6 +11,90 @@
 #include "programaTrab4.h"
 #include "funcoesMonitor.h"
 
+//LISTA
+No* criaNo(){
+	No* n = (No*) malloc(sizeof(No));
+	n->dados = (iReg_Dados*) malloc(sizeof(iReg_Dados));
+	for(int i = 0; i < 120; i++) n->dados->chaveBusca[i] = '@';
+	n->dados->byteOffset = -1;	
+	return n;
+}
+
+Lista* criaLista(){
+	Lista* l = (Lista*) malloc(sizeof(Lista));
+	l->inicio = NULL;
+	l->fim = NULL;
+	l->tam = 0;
+	return l;
+}
+
+void insereFim(Lista* l, No* no){
+	if (DEBUG) printf("\t\t\tinsercao no fim\n");	
+	if(l->tam == 0){
+		if (DEBUG) printf("\t\t\tprimeira insercao\n");
+		no->prox = NULL;		
+		l->inicio = no;
+		l->fim = no;
+		l->tam++;
+		return;	
+	}
+	l->fim->prox = no;
+	l->fim = no;
+	l->fim->prox = NULL;
+	l->tam++;
+}
+
+void insereOrdenado(Lista* l, No* n){
+	if(l->tam == 0){
+		insereFim(l, n);
+		return;
+	}	
+
+	No* aux = l->inicio;
+	
+	if(strcmp(n->dados->chaveBusca, l->inicio->dados->chaveBusca) < 0){
+		n->prox = l->inicio;
+		l->inicio = n;
+		l->tam++;
+		return;
+	}
+
+	while(aux->prox != NULL){
+		if(strcmp(n->dados->chaveBusca, aux->prox->dados->chaveBusca) < 0){
+			n->prox = aux->prox;		
+			aux->prox = n;
+			l->tam++;
+			return;
+		}
+		if(strcmp(n->dados->chaveBusca, aux->prox->dados->chaveBusca) == 0){
+			if(aux->prox->prox == NULL){
+				insereFim(l, n);
+				return;
+			}				
+			else {
+				if (strcmp(aux->prox->prox->dados->chaveBusca, n->dados->chaveBusca) != 0){
+					n->prox = aux->prox->prox;
+					aux->prox->prox = n;
+					l->tam++;
+					return;
+				}
+			} 
+		}		
+		aux = aux->prox;
+	}
+	//se chegou atq aqui, entao devemos inserir ao final da lista o No n
+	insereFim(l, n);	
+ }
+
+void imprimeLista(Lista* l){
+	if (l->tam == 0) return;	
+	No* aux = l->inicio;	
+	while(aux != NULL){
+		if(DEBUG) printf("\t%s, %ld\n", aux->dados->chaveBusca, aux->dados->byteOffset);
+		aux = aux->prox;
+	}
+}
+
 // AUXILIARES
 int testeEhConsistente (FILE *arquivoBIN){
 	fseek(arquivoBIN, 0, SEEK_SET);
@@ -37,31 +121,44 @@ void limpaRegistro(Reg_Dados *rdados){
 	return;
 }
 void limpaRegistroIndice(iReg_Dados *irdados){
-	irdados->chaveBusca[0] = '\0';
+	for (int i = 0; i < 120; i++)
+		irdados->chaveBusca[i] = '@';
 	irdados->byteOffset = -1;
 	return;
 }
 int buscaBinariaIndice(iVetReg *vet, char *chave, int ini, int fim) {
+	if (DEBUG) printf("TESTE: entrou na bb\n");
 	// 0 - caso base (busca sem sucesso)
-	if (ini > fim) return -1;
-
+	if (ini > fim){
+		if (DEBUG) printf("TESTE: BB sem sucesso, retornando -1\n");
+		return -1;
+	}
 	// 1 - calcula ponto central e verifica se chave foi encontrada
 	int centro = (int)((ini+fim)/2.0);
+	if (DEBUG) printf("BB: calculou centro\n");
 	if (!strcmp(vet->v[centro]->chaveBusca, chave)){
+		if (DEBUG) printf("BB: deu match com uma chave\n");
 		// retornar o primeiro (mais a esquerda) que da match com nomeServidor
-		while(centro != 0 && !strcmp(vet->v[centro]->chaveBusca, chave))
+		if (DEBUG) printf("BB: vai retornar o mais a esquerda\n");
+		while(centro != -1 && !strcmp(vet->v[centro]->chaveBusca, chave)){
+			if (DEBUG) printf("BB: ainda deu match, foi pra esquerda\n");
 			centro--;
-		return centro;
+		}
+		if (DEBUG) printf("BB: encontrou primeira chave diferente OU chegou no centro = -1\n");
+		return (centro+1);
+	}
+	// 2 - chamada recursiva para metade do espaco de busca
+	if (strcmp(chave, vet->v[centro]->chaveBusca) < 0){
+		// se chave eh menor, fim passa ser o centro-1
+		if (DEBUG) printf("BB: chave ta metade 1\n");
+		return buscaBinariaIndice(vet, chave, ini, centro-1);
 	}
 
-	// 2 - chamada recursiva para metade do espaco de busca
-	if (strcmp(chave, vet->v[centro]->chaveBusca) < 0)
-		// se chave eh menor, fim passa ser o centro-1
-		return busca_binaria(vet, chave, ini, centro-1);
-
-	if (strcmp(chave, vet->v[centro]->chaveBusca) > 0)
+	if (strcmp(chave, vet->v[centro]->chaveBusca) > 0){
 		// se a chave eh maior, inicio passa ser centro+1
-		return busca_binaria(vet, chave, centro+1, fim);
+		if (DEBUG) printf("BB: chave ta metade 2\n");
+		return buscaBinariaIndice(vet, chave, centro+1, fim);
+	}
 	return -1;
 }
 
@@ -427,7 +524,7 @@ int fazLeituraImpressaoProxRegistroBIN (FILE *arquivoBIN, Reg_Dados *rdados, int
 	return 1;
 }
 // FUNCIONALIDADE 3
-void buscaRegistrosBIN(int *contpagdisco, FILE *arquivoBIN, Reg_Dados *rdados, char *nomeCampo, char *valorCampo, Reg_Cabecalho *rcabecalho, int *pdisco_acessadas){
+int buscaRegistrosBIN(int *contpagdisco, FILE *arquivoBIN, Reg_Dados *rdados, char *nomeCampo, char *valorCampo, Reg_Cabecalho *rcabecalho, int *pdisco_acessadas){
 	int flag_encontrou = 0;
 	int flag_erro = 1;
 	int buffer_pdiscos;
@@ -451,7 +548,7 @@ void buscaRegistrosBIN(int *contpagdisco, FILE *arquivoBIN, Reg_Dados *rdados, c
 	// antes de tudo, checamos se o arquivo binario pode ser lido (ou seja, esta consistente, status = 1)
 	if (!testeEhConsistente(arquivoBIN)){
 		printf("Falha no processamento do arquivo.\n");
-		return;
+		return -1;
 	}
 	// ignoramos a primeira pagina de disco (que so possui o registro de cabecalho, ja lido)
 	fseek(arquivoBIN, 32000, SEEK_SET);
@@ -523,9 +620,9 @@ void buscaRegistrosBIN(int *contpagdisco, FILE *arquivoBIN, Reg_Dados *rdados, c
 	// se a flag erro nao foi alterada em nenhum momento, nada foi encontrado
 	if (flag_erro){
 		printf("Registro inexistente.\n");
-		return;
+		//return -1;
 	}
-	else if (!strcmp(nomeCampo, "idServidor")){
+	if (!strcmp(nomeCampo, "idServidor")){
 		*pdisco_acessadas = buffer_pdiscos/32000;
 		if (buffer_pdiscos%32000 > 0)
 			*pdisco_acessadas += 1;
@@ -536,7 +633,7 @@ void buscaRegistrosBIN(int *contpagdisco, FILE *arquivoBIN, Reg_Dados *rdados, c
 			*pdisco_acessadas += 1;
 	}
 	printf("Número de páginas de disco acessadas: %d\n", *pdisco_acessadas);
-	return;
+	return (*pdisco_acessadas);
 }
 int fazLeituraProxRegistroBIN (FILE *arquivoBIN, Reg_Dados *rdados, int *contpagdisco, int *foiRemovido){
 	char charRemovido = fgetc(arquivoBIN);
@@ -794,6 +891,7 @@ void removeRegistro(FILE *arquivoBIN, Reg_Dados *rdados, char *nomeCampo, char *
 	return;
 }
 int lerRegistroPre(FILE *arquivoBIN, Reg_Dados *rdados){
+	if (DEBUG) printf("TESTE: entrou lerRegistroPre\n");
 	// le removido
 	fread(&(rdados->removido), sizeof(char), 1, arquivoBIN);
 	if (feof(arquivoBIN))
@@ -853,14 +951,18 @@ int lerRegistroPre(FILE *arquivoBIN, Reg_Dados *rdados){
 	return 1;
 }
 void insereListaRemovidos (int pos_bin, FILE *arquivoBIN){
+	if (DEBUG) printf("insereListaRemovidos: entrou\n");
 	// marca campo 'removido' com '*'
+	if (DEBUG) printf("insereListaRemovidos: vai marcar como removido\n");
 	setRemovidoReg(arquivoBIN, pos_bin);
 	// caso 1) LISTA VAZIA - INSERE NO INICIO
 	if (getTopoLista(arquivoBIN) == -1){
+		if (DEBUG) printf("insereListaRemovidos: entrou caso 1\n");
 		setTopoLista(arquivoBIN, (long) pos_bin);	
 		setEncadeamentoLista(arquivoBIN, pos_bin, -1);
 	// caso 2) LISTA NAO VAZIA - INSERE COMUM
 	} else {
+		if (DEBUG) printf("insereListaRemovidos: entrou caso 2\n");
 		int ant = -1;
 		int prox = (int) getTopoLista(arquivoBIN);
 		int naoInserido = 1;
@@ -883,6 +985,7 @@ void insereListaRemovidos (int pos_bin, FILE *arquivoBIN){
 			}
 		}
 	}
+	if (DEBUG) printf("insereListaRemovidos: vai preencher com arroba\n");
 	// preenchemos os campos restantes no registro removido com arroba (exceto os primeiros campos)
 	preencheComArroba(arquivoBIN, pos_bin);
 	return;
@@ -1160,10 +1263,12 @@ void setEncadeamentoLista(FILE *arquivoBIN, int pos, long valor){
 	return;
 }
 int getTamanhoRegistro(FILE *arquivoBIN, int pos){
+	if (DEBUG) printf("getTamanhoRegistro: entrou\n");
 	// vamos ate a pos, pulamos 1 (removido)
 	fseek(arquivoBIN, (pos+1), SEEK_SET);
 	int tamanhoRegistro;
 	fread(&(tamanhoRegistro), sizeof(int), 1, arquivoBIN);
+	if (DEBUG) printf("getTamanhoRegistro: leu tamanho registro\n");
 	return tamanhoRegistro;
 }
 void setTamanhoRegistro(FILE *arquivoBIN, int pos, int delta){
@@ -1181,14 +1286,20 @@ void setRemovidoReg(FILE *arquivoBIN, int pos){
 	return;
 }
 void preencheComArroba (FILE *arquivoBIN, int pos){
+	if (DEBUG) printf("preencheComArroba: entrou\n");
 	// vamos ate a pos pulando 'removido', 'tamanho' e 'encadeamentoLista'
 	int tam = getTamanhoRegistro(arquivoBIN, pos) - 8;
+	if (DEBUG) printf("preencheComArroba: vai dar fflush\n");
 	fflush(stdout);
+	if (DEBUG) printf("preencheComArroba: deu fflush\n");
 	char arroba[tam];
+	if (DEBUG) printf("preencheComArroba: vai criar vetor de arrobas\n");
 	for(int i = 0; i < tam; i++){
 		arroba[i] = '@';
 	}
+	if (DEBUG) printf("preencheComArroba: vai dar fseek pra pular o removido + tamanhoRegistro + encadeamentoLista\n");
 	fseek(arquivoBIN, (pos+13), SEEK_SET);
+	if (DEBUG) printf("preencheComArroba: vai escrever vetor de arrobas\n");
 	fwrite(arroba, sizeof(char), tam, arquivoBIN);
 	return;
 }
@@ -1691,7 +1802,115 @@ void matching(FILE* entradaMaior, FILE* entradaMenor, FILE* saida, int* entrada1
 }
 
 // FUNCIONALIDADE 10
+/*	Esta funcao e responsavel por escrever no arquivo de indices
+	um unico indice passado como parametro.
+*/
+void escreveIndice(No* indice, FILE* saida){
+	fwrite(indice->dados->chaveBusca, 120, 1, saida);
+	fwrite(&indice->dados->byteOffset, sizeof(long int), 1, saida);
+}
+
+/*	Esta funcao e responsavel por escrever, em ordem, as informacoes presentes na estrutura
+	de lista para o arquivo de indices.
+*/
+void transfereLista(Lista* indices, FILE* saida){	
+	if (indices->tam == 0) return;	//verifica se lista esta vazia
+
+	if (DEBUG) printf("quantidade de indices: %d\n", indices->tam);
+
+	//voltamos ao registro de cabecalho do arquivo de indice e escrevemos a quantidade de registros	
+	fseek(saida, 1, SEEK_SET);
+	fwrite(&indices->tam, sizeof(int), 1, saida);	
+
+	fseek(saida, 32000, SEEK_SET);	//pulamos a pagina do cabecalho	
+
+	No* aux = indices->inicio;	//declara no auxiliar que percorre a lista
+
+	while(aux != NULL){
+		escreveIndice(aux, saida);	//escrevemos o indice do No atual no arquivo de saida			
+		aux = aux->prox;	//vamos para o proximo no
+	}
+}
+
+
+/*	Esta funcao percorre um arquivo de dados registro a registro e verifica se o registro atual necessita de um
+	registro no arquivo de indices que esta sendo criado. Caso positivo, chamamos uma funcao que carrega aas informacoes
+	necessarias para escrita em uma estrutura auxiliar de lista, inserindo ordenadamente.
+	Ao final, escrevemos as informacoes da lista em sequencia no arquivo de indices criado.
+*/
+void criaArquivoIndice(FILE* entrada, FILE* saida, int* erro){
+	//conferimos a consistencia do arquivo de entrada	
+	if (!testeEhConsistente(entrada)){
+		printf("Falha no processamento do arquivo.\n");
+		*erro = 1;
+		return;
+	}
+	//escrevemos no arquivo de entrada e saida o status de inconsistente, pois nao acabamos as operacoes no arquivo
+	setStatus(entrada, '0');	
+	setStatus(saida, '0');
+
+	fseek(saida, 1, SEEK_SET);
+	for(int i = 1; i < 32000; i++){
+		fwrite("@", sizeof(char), 1, saida); 
+	}	
+	
+	//pulamos o registro de cabecalho do arquivo de entrada e de saida	
+	fseek(entrada, 32000, SEEK_SET);
+
+	//aqui declaramos a lista que contera os registros de indice que serao mantidos no arquivo de saida	
+	Lista* indices = criaLista();
+	//e delcarado aqui o registro auxiliar que sera atualizado a cada novo registro no arquivo de entrada	
+	Reg_Dados* reg = (Reg_Dados*) malloc(sizeof(Reg_Dados));
+
+	//guarda a posicao atual do ponteiro do arquivo de entrada
+	int offset_atual = 32000;
+
+	while (lerRegistroPre(entrada, reg)){
+		if (DEBUG) printf("removido: %c, nome: %s, e offset: %d\n", reg->removido, reg->nomeServidor, offset_atual);
+
+		// pula lixo
+		while(fgetc(entrada) == '@'){
+		}
+		
+		//caso o arquivo ainda nao tenha cabado, volta seu ponteiro em um byte, pois foi efetuado um "fgetc"
+		if(!feof(entrada)){
+			fseek(entrada, ftell(entrada)-1, SEEK_SET);
+		}
+		
+		//este bloco de codigo faz com que, caso o registro atual precise de indice, este seja inserido na lista 
+		if( (strlen(reg->nomeServidor) > 0) && (reg->removido != '*')){
+			No* aux_insere = criaNo();
+			
+			//essas proximas duas linhas copiam os valores necessarios de chave de busca e byte offset do registro lido para o no			
+			strcpy(aux_insere->dados->chaveBusca, reg->nomeServidor);
+			aux_insere->dados->byteOffset = offset_atual;
+			
+			if(DEBUG) printf("\tINSERINDO:\n\t\tno->dados->chaveBusca: %s, no->dados->byteOffset: %ld\n", aux_insere->dados->chaveBusca, aux_insere->dados->byteOffset);
+			//inserimos o no com os valores corretos na lista que contem os registros de indice que estarao presentes no arquivo de saida
+			insereOrdenado(indices, aux_insere);
+ 		}
+		//guarda a posicao atual do ponteiro do arquivo, para, caso necessario, escrever no No que sera inserido na lista		
+		offset_atual = ftell(entrada);
+		
+		limpaRegistro(reg);	//limpamos o registro que percorre o arquivo de entrada
+	}
+	//atualizamos no registro de cabecalho a quantidade de registros de indice, de acordo com o tamanho da lista auxiliar utilizada
+	fseek(saida, 1, SEEK_SET);	
+	fwrite(&indices->tam, sizeof(int), 1, saida);
+	
+	if (DEBUG) imprimeLista(indices);	
+	
+	transfereLista(indices, saida);
+
+	//marcamos o status dos arquivos de entrada e saida como consistente, ja que acabamos todas as operacoes necessarias nestes
+	setStatus(entrada, '1');
+	setStatus(saida, '1');
+
+	free(indices);
+	free(reg);
+}
 void copiaIndiceRAM(FILE *arquivoBIN, iReg_Dados *irdados, iVetReg *vetRegIndice, int *erro){
+	if (DEBUG) printf("TESTE: entrou copiaIndiceRAM\n");
 	int pos_bin;
 	int pos_buffer;
 	// antes de tudo, checamos se o arquivo binario pode ser lido (ou seja, esta consistente, status = 1)
@@ -1705,33 +1924,44 @@ void copiaIndiceRAM(FILE *arquivoBIN, iReg_Dados *irdados, iVetReg *vetRegIndice
 	fseek(arquivoBIN, 32000, SEEK_SET);
 	int i = 0;
 	// lemos todo o arquivoBIN, registro por registro
+	if (DEBUG) printf("TESTE: vai lerProxRegIndice\n");
 	while (lerProxRegIndice(arquivoBIN, irdados)){
+		/*
 		// pula lixo
 		while(fgetc(arquivoBIN) == '@'){
 		}
 		if(!feof(arquivoBIN))
 			fseek(arquivoBIN, ftell(arquivoBIN)-1, SEEK_SET);
+		if (DEBUG) printf("TESTE: pulou lixo\n");
+		*/
 		pos_bin = ftell(arquivoBIN) - 128;
+		if (DEBUG) printf("TESTE: pegou o byteoffset\n");
+		if (DEBUG) printf("TESTE: i = %d\n", i);
 		// inserindo o registro atual no vetor
 		strcpy(vetRegIndice->v[i]->chaveBusca, irdados->chaveBusca);
+		if (DEBUG) printf("TESTE: vai preencher nome com arroba\n");
+		for (int j = (strlen(vetRegIndice->v[i]->chaveBusca)+1); j < 120; j++){
+			vetRegIndice->v[i]->chaveBusca[j] = '@';
+		}
+		if (DEBUG) printf("TESTE: copiou chaveBusca\n");
 		vetRegIndice->v[i]->byteOffset = irdados->byteOffset;
+		if (DEBUG) printf("TESTE: copiou byteOffset\n");
 		// os registros sao sempre limpados, a fim de que informacoes de registros antigos nao sejam reutiilizadas
 		limpaRegistroIndice(irdados);
+		if (DEBUG) printf("TESTE: limpou registros\n");
 		i++;
 	}
-	// por fim, copiamos o ultimo registro presente no arquivo de indice
-	strcpy(vetRegIndice->v[i]->chaveBusca, irdados->chaveBusca);
-	vetRegIndice->v[i]->byteOffset = irdados->byteOffset;
-	i++;
-	vetRegIndice->tam = i;
+	vetRegIndice->tam = i-1;
 	setStatus(arquivoBIN, '1');
 	return;
 }
 int lerProxRegIndice(FILE *arquivoBIN, iReg_Dados *irdados){
+	if (feof(arquivoBIN))
+		return 0;
+	if (DEBUG) printf("TESTE: entrou lerProxRegIndice\n");
 	// le chaveBusca
 	fread(irdados->chaveBusca, sizeof(char), 120, arquivoBIN);
-	if (feof(arquivoBIN))
-		return 0;	
+	if (DEBUG) printf("TESTE: leu chaveBusca\n");
 	/* se a chaveBusca nao tem '\0', habilita essa parte
 	char c = 'a';
 	int i = 0;
@@ -1742,8 +1972,7 @@ int lerProxRegIndice(FILE *arquivoBIN, iReg_Dados *irdados){
 	*/
 	// le byteOffset
 	fread(&(irdados->byteOffset), sizeof(long), 1, arquivoBIN);
-	if (feof(arquivoBIN))
-		return 0;	
+	if (DEBUG) printf("TESTE: leu byteOffset\n");
 	return 1;
 }
 void escreveRAMIndice(FILE *arquivoBIN, iVetReg *vetRegIndice){
@@ -1753,20 +1982,171 @@ void escreveRAMIndice(FILE *arquivoBIN, iVetReg *vetRegIndice){
 	fwrite(&c, sizeof(char), 1, arquivoBIN);
 	int tam = vetRegIndice->tam;
 	fwrite(&tam, sizeof(int), 1, arquivoBIN);
-	char arroba[tam];
-	for(int j = 0; j < tam; j++){
+	char arroba[31995];
+	for(int j = 0; j < 31995; j++){
 		arroba[j] = '@';
 	}
-	fseek(arquivoBIN, (pos+13), SEEK_SET);
-	fwrite(arroba, sizeof(char), tam, arquivoBIN);
+	fwrite(arroba, sizeof(char), 31995, arquivoBIN);
 	for (int i = 0; i < vetRegIndice->tam; i++){
+		if (DEBUG){
+			printf("TESTE2 chave: ");
+			for (int j = 0; j < 120; j++)
+				printf("%c", vetRegIndice->v[i]->chaveBusca[j]);
+			printf(" [%d]\n", (int) strlen(vetRegIndice->v[i]->chaveBusca));
+		}
 		fwrite(vetRegIndice->v[i]->chaveBusca, sizeof(char), 120, arquivoBIN);
 		fwrite(&(vetRegIndice->v[i]->byteOffset), sizeof(long), 1, arquivoBIN);
 	}
 	return;
 }
+
+//FUNCIONALIDADE 11
+/*	Esta funcao copia os dados de descricao de campos do cabecalho do arquivo de dados
+	para um registro de cabecalho auxiliar
+*/
+void guardaDescricoesCabecalho(FILE* entrada, Reg_Cabecalho* cab){
+	fseek(entrada, 10, SEEK_SET);
+	for(int i = 0; i < 5; i++){
+		fread(&cab->campos[i], 40, 1, entrada);
+		fseek(entrada, 1, SEEK_CUR);
+	}
+	if(DEBUG) printf("campos lidos: %s\n%s\n%s\n%s\n%s\n",cab->campos[0], cab->campos[1], cab->campos[2], cab->campos[3], cab->campos[4]);
+}
+
+
+/*	Esta funcao imprime os valores necessarios de um registro do arquivo de dados,
+	com a formatacao correta especificada
+*/
+void imprime_registro_encontrado(FILE* bin, iReg_Dados* indiceAux, Reg_Cabecalho* cab){
+
+	fseek(bin, indiceAux->byteOffset, SEEK_SET);
+	
+	Reg_Dados* aux = (Reg_Dados*) malloc(sizeof(Reg_Dados));	
+	lerRegistroPre(bin, aux);
+	
+	printf("%s: %d\n", cab->campos[0], aux->idServidor);
+
+	if(aux->salarioServidor != -1) printf("%s: %.2lf\n", cab->campos[1], aux->salarioServidor);
+	else printf("%s: valor nao declarado\n", cab->campos[1]);
+
+	if (aux->telefoneServidor[0] != '\0') printf("%s: %s\n", cab->campos[2], aux->telefoneServidor);
+	else printf("%s: valor nao declarado\n", cab->campos[2]);
+
+	if (strlen(aux->nomeServidor) > 0) printf("%s: %s\n", cab->campos[3], aux->nomeServidor);
+	else printf("%s: valor nao declarado\n", cab->campos[3]);
+
+	if (strlen(aux->cargoServidor) > 0) printf("%s: %s\n", cab->campos[4], aux->cargoServidor);
+	else printf("%s: valor nao declarado\n", cab->campos[4]);
+
+	printf("\n");
+}
+
+
+/*	Esta funcao verifica se um determinado registro lido precisa ser recuperado, comparando uma chave de busca com o valor
+	inserido na entrada padrao, e se for o caso, chama a funcao que imprime seus dados
+*/
+void verificaRecuperacao(FILE* entradaIndices, FILE* entradaBin, iReg_Dados* indiceAux, char campo[], char valor[], Reg_Cabecalho* cab, int* encontrado, int* acessosDados){
+	if (strcmp(campo, "nomeServidor") == 0){
+		if (strcmp(valor, indiceAux->chaveBusca) == 0) {
+			imprime_registro_encontrado(entradaBin, indiceAux, cab);
+			*encontrado = 1;
+			*acessosDados = (*acessosDados) + 1;
+		}
+	}	
+}
+
+/*	Esta funcao le um registro de indice do arquivo de indices, guarda suuas informacoes
+ 	em um registro de indice auxiliar e retorna 0 caso este tenha acabado, e 1 caso contrario
+*/
+int lerProxIndice(FILE* entrada, iReg_Dados* indice){
+	fread(indice->chaveBusca, 120, 1, entrada);
+	if (feof(entrada))
+		return 0;
+	fread(&indice->byteOffset, sizeof(long), 1, entrada);
+	if (feof(entrada))
+		return 0;
+	return 1;
+}
+
+/*	Esta funcao e responsavel por buscar no arquivo de indices a partir das chaves de busca
+	registros desejados, e caso sejam encontrados, chamamos uma funcao que acessa o arquivo de dados
+	e imprime as informacoes corretas do registro recuperado.
+
+*/
+int recuperaDados(FILE* entradaBin, FILE* entradaIndices, char campo[], char valor[], int origemChamada){
+	// antes de tudo, checamos se o arquivo binario pode ser lido (ou seja, esta consistente, status = 1)
+	if (!testeEhConsistente(entradaIndices) || !testeEhConsistente(entradaBin)){
+		printf("Falha no processamento do arquivo.\n");
+		if (DEBUG) printf("arquivo inconsistente\n");
+		return -1;
+	}
+	
+	//definimos o status dos arquivos de entrada como inconsistentes
+	setStatus(entradaIndices, '0');
+	setStatus(entradaBin, '0');		
+	
+	Reg_Cabecalho* cab = (Reg_Cabecalho*) malloc(sizeof(Reg_Cabecalho));		
+	guardaDescricoesCabecalho(entradaBin, cab);
+
+	//pulamos o registro de cabecalho do arquivo de entrada e de saida	
+	fseek(entradaIndices, 32000, SEEK_SET);
+
+	//e delcarado aqui o registro auxiliar que sera atualizado a cada novo registro no arquivo de entrada	
+	iReg_Dados* indiceAux = (iReg_Dados*) malloc(sizeof(iReg_Dados));
+
+	//variavel que marca se algum registro for encontrado, é inicializada representando que nao foi encontrado, muda caso a recuperacao seja feita com sucesso
+	int encontrado = 0;
+
+	//variaveis que guardam a quantidade de acessos a disco em ambos os arquivos lidos	
+	int acessosDados = 0; //comeca com 1 por que sempre ha o registro de cabecalho a ser lido
+	int acessosIndices = 1;	//comeca com 1 por que sempre ha o registro de cabecalho a ser lido
+	
+	//variavel que guarda a posicao do ponteiro no arquivo de indices sendo lido
+	int offset_atual = 0;
+	//guarda em que pagina de disco esta o ponteiro do arquivo de indices
+	int pagAtual = 0;
+	
+	//este loop le todos os registros de indice e verifica, um a um, a partir da chave de busca, se o registro atual deve ser impresso
+	while (lerProxIndice(entradaIndices, indiceAux)){
+		verificaRecuperacao(entradaIndices, entradaBin, indiceAux, campo, valor, cab, &encontrado, &acessosDados);
+		
+		if (pagAtual == -1){
+			pagAtual = (ftell(entradaIndices)) / 32000;
+		}
+		else if (((ftell(entradaIndices)) / 32000) != pagAtual) {			
+			pagAtual = ((ftell(entradaIndices)) / 32000);
+			acessosIndices++;
+		}
+		/*
+		//atualizamos o offset atual e a pagina de disco
+		offset_atual = ftell(entradaIndices);
+		pagAtual = (offset_atual) / 32000;		
+		*/
+	}
+	verificaRecuperacao(entradaIndices, entradaBin, indiceAux, campo, valor, cab, &encontrado, &acessosDados);
+	//caso nenhum registro de indice seja encontrado, imprimimos esta mensagem
+	if (origemChamada == 1){
+		if(!encontrado) printf("Registro inexistente.\n");
+		else{
+			printf("Número de páginas de disco para carregar o arquivo de índice: %d\n", acessosIndices);
+			printf("Número de páginas de disco para acessar o arquivo de dados: %d\n", acessosDados);
+		}	
+	} else if (origemChamada == 2){
+		if(!encontrado) printf("Registro inexistente.\n");
+		printf("Número de páginas de disco para carregar o arquivo de índice: %d\n", acessosIndices);
+		printf("Número de páginas de disco para acessar o arquivo de dados: %d\n", acessosDados);
+	}
+	//definimos o status dos arquivos de entrada como consistentes
+	setStatus(entradaIndices, '1');
+	setStatus(entradaBin, '1');
+
+	free(indiceAux);
+	free(cab);
+	return acessosDados;
+}
 // FUNCIONALIDADE 12
 void removeRegistroIndice(FILE *arquivoBIN, FILE *arquivoBINsaida, Reg_Dados *rdados, char *nomeCampo, char *valorCampo, iVetReg *vetRegIndice, int *erro){
+	if (DEBUG) printf("TESTE: entrou removeRegistroIndice\n");
 	int flag_encontrou = 0;
 	int pos_bin;
 	int pos_buffer;
@@ -1785,6 +2165,7 @@ void removeRegistroIndice(FILE *arquivoBIN, FILE *arquivoBINsaida, Reg_Dados *rd
 		// pula lixo
 		while(fgetc(arquivoBIN) == '@'){
 		}
+		if (DEBUG) printf("TESTE: pulou lixo\n");
 		if(!feof(arquivoBIN))
 			fseek(arquivoBIN, ftell(arquivoBIN)-1, SEEK_SET);
 		pos_bin = ftell(arquivoBIN) - (rdados->tamanhoRegistro + 5);
@@ -1821,18 +2202,25 @@ void removeRegistroIndice(FILE *arquivoBIN, FILE *arquivoBINsaida, Reg_Dados *rd
 			}
 		} 
 		if (flag_encontrou){
+			if (DEBUG) printf("TESTE: encontrou reg removido\n");	
 			pos_buffer = ftell(arquivoBIN);
 			insereListaRemovidos(pos_bin, arquivoBIN);
+			if (DEBUG) printf("TESTE: inseriu lista removidos\n");
 			// remover do vetor de indice junto do arquivoBIN
 			if (strlen(rdados->nomeServidor) > 0){
 				// remove fazendo busca binaria no vetor indice
+				if (DEBUG) printf("TESTE: vai entrar na bb\n");
 				int testeResBB = buscaBinariaIndice(vetRegIndice, rdados->nomeServidor, 0, vetRegIndice->tam);
+				if (DEBUG) printf("TESTE: saiu da BB\n");
 				int resBB = -1;
 				if (testeResBB != -1){
 					// ir para frente ate dar match com o byte offset
-					while(resBB == -1 && testeResBB < vetRegIndice->tam && !strcmp(vetRegIndice->v[testeResBB]->chaveBusca, rdados->nomeServidor){
-						if (vetRegIndice->v[testeResBB]->byteOffset == (long) pos_bin)
+					if (DEBUG) printf("TESTE: vai pra direita ate dar match com BO\n");
+					while(resBB == -1 && testeResBB < vetRegIndice->tam && !strcmp(vetRegIndice->v[testeResBB]->chaveBusca, rdados->nomeServidor)){
+						if (vetRegIndice->v[testeResBB]->byteOffset == (long) pos_bin){
 							resBB = testeResBB;
+							if (DEBUG) printf("TESTE: deu match com BO, resBB: %d\n", resBB);
+						}
 						testeResBB++;
 					}
 				}
@@ -1840,22 +2228,98 @@ void removeRegistroIndice(FILE *arquivoBIN, FILE *arquivoBINsaida, Reg_Dados *rd
 					printf("Deu ruim");
 				else{
 					// ao encontrar, shiftar todos os proximos para pos-1
+					if (DEBUG) printf("TESTE: vai shiftar os proximos para pos-1\n");
 					for (int i = resBB; i < vetRegIndice->tam - 1; i++){
 						vetRegIndice->v[i]->byteOffset = vetRegIndice->v[i+1]->byteOffset;
-						strcpy(vetRegIndice->v[i]->chaveBusca, vetRegIndice->v[i+1]->chaveBusca);
+						if (DEBUG) printf("TESTE: shiftou BO\n");
+
+						strncpy(vetRegIndice->v[i]->chaveBusca, vetRegIndice->v[i+1]->chaveBusca,120);
+						for (int j = (strlen(vetRegIndice->v[i]->chaveBusca)+1); j < 120; j++){
+							vetRegIndice->v[i]->chaveBusca[j] = '@';
+						}
+						if (DEBUG) printf("TESTE: shiftou chaveBusca\n");
 					}
 					// diminuir tam do vetor -1
 					vetRegIndice->tam = vetRegIndice->tam - 1;
+					if (DEBUG) printf("TESTE: diminuiu tam vetor\n");
 				}
 			}
 			// apos remover, ordenar novamente o vetor de indice
-			MS_sort(vetRegIndice->v, vetRegIndice->tam, sizeof(iReg_Dados), comparaRegistrosIndice);
+			if (DEBUG) printf("TESTE: vai entrar no MS\n");
+			MS_sort(vetRegIndice->v, vetRegIndice->tam, sizeof(iReg_Dados*), comparaRegistrosIndice);
 			fseek(arquivoBIN, pos_buffer, SEEK_SET);
 			flag_encontrou = 0;
 		}
 		// os registros sao sempre limpados, a fim de que informacoes de registros antigos nao sejam reutiilizadas
 		limpaRegistro(rdados);
+		if (DEBUG) printf("TESTE: limpou reg\n");
 	}
 	setStatus(arquivoBIN, '1');
+	return;
+}
+// FUNCIONALIDADE 13
+void insereRegistroIndice(FILE *arquivoBIN, FILE *arquivoBINsaida, Reg_Dados *rdados, iVetReg *vetRegIndice, int *erro){
+
+	// antes de tudo, checamos se o arquivo binario pode ser lido (ou seja, esta consistente, status = 1)
+	if (!testeEhConsistente(arquivoBIN)){
+		printf("Falha no processamento do arquivo.\n");
+		*erro = 1;
+		return;
+	}
+	/*
+	feito isso, preparamos os contadores
+	e posicionamos o ponteiro do arquivoBIN para a primeira posicao da pagina de disco 2
+	pois a pagina de disco 1 guarda somente o registro de cabecalho, que nao nos interessa no momento
+	*/ 
+	setStatus(arquivoBIN, '0');
+	fseek(arquivoBIN, 32000, SEEK_SET);
+	/*
+	fazemos a leitura do arquivoBIN ate que o novo registro seja inserido
+	ou ate que o fim da lista de removidos chegue ao fim, para que possamos seguramente inserir
+	o novo registro no fim do arquivo
+	*/
+	int novaPosInsercao = (int) getTopoLista(arquivoBIN);
+	int ant = -1;
+	long prox;
+	int naoInserido = 1;
+	int tipoInsercao; // se for inserir num registro removido (1) se for inserido no fim do arquivo (2)
+	while(novaPosInsercao != -1 && naoInserido){
+		prox = getEncadeamentoLista(arquivoBIN, novaPosInsercao);
+		// testa tamanho
+		if (getTamanhoRegistro(arquivoBIN, novaPosInsercao) >= rdados->tamanhoRegistro){
+			naoInserido = 0;
+			if (ant == -1){
+				setTopoLista(arquivoBIN, prox);
+			}else{
+				setEncadeamentoLista(arquivoBIN, ant, prox);
+			}
+			// nessa insercao, o tipo eh '1', pois o tamanho do registro
+			// nao eh alterado caso este novo registro sobrescreva
+			// um registro antigo removido
+			insereRegistroPos(arquivoBIN, rdados, novaPosInsercao, 1);
+		}
+		else{
+			ant = novaPosInsercao;
+			novaPosInsercao = (int) getEncadeamentoLista(arquivoBIN, novaPosInsercao);
+		}
+	}
+	// se ainda nao foi inserido, vamos inseri-lo no fim do arquivo
+	if (naoInserido){
+		fseek(arquivoBIN, 0, SEEK_END);
+		novaPosInsercao = ftell(arquivoBIN);
+		// ja aqui, o tipo da insercao eh '2', pois nao esta sobrescrevendo nenhum registro antigo
+		insereRegistroPos(arquivoBIN, rdados, novaPosInsercao, 2);
+	}
+	setStatus(arquivoBIN, '1');
+	if (strlen(rdados->nomeServidor) > 0){
+		int ultimaPosVetor = vetRegIndice->tam;
+		vetRegIndice->v[ultimaPosVetor]->byteOffset = (long) novaPosInsercao;
+		strcpy(vetRegIndice->v[ultimaPosVetor]->chaveBusca, rdados->nomeServidor);
+		for (int j = (strlen(vetRegIndice->v[ultimaPosVetor]->chaveBusca)+1); j < 120; j++){
+			vetRegIndice->v[ultimaPosVetor]->chaveBusca[j] = '@';
+		}
+		vetRegIndice->tam = ultimaPosVetor + 1;
+		MS_sort(vetRegIndice->v, vetRegIndice->tam, sizeof(iReg_Dados*), comparaRegistrosIndice);
+	}
 	return;
 }
